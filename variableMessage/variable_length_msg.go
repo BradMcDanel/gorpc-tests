@@ -1,13 +1,15 @@
-/* DOESN'T WORK YET
+/* NUMBER OF MESSAGES CURRENTLY UNUSED (set to window size)
  * Sets up a user-defined number of servers and connects clients,
- * each client connected to one server, each server handling multiple clients
- * 
+ * each client connected to one server, each server handling multiple clients,
+ * with variable message size and message length
+ *
  * Basic usage:
  * go install gorpc-tests/variableMessage
  * variableMessage  [-ns number of servers]
  					[-nc number of clients]
  					[-ml message length]
- 					[-nm number of messages]
+ 					[-nm number of messages each client should send]
+ 					[-ws window size]
  */
 
 package main
@@ -17,24 +19,24 @@ import (
     "net"
     "net/rpc"
     "flag"
-//    "math/rand"
     "log"
     "io/ioutil"
     "time"
     "os"
-//    "bytes"
+	"sync"
 )
 
 const (
 	DEFAULTSERVER = "localhost"
     PORTBASE = 9000
-    DEBUG = true
+    DEBUG = false
 )
 
 var numMessages int
 var numClients int
 var numServers int
 var messageLength int
+var windowSize int
 
 type ByteArgs struct {
 	A []byte
@@ -42,17 +44,25 @@ type ByteArgs struct {
 
 type Arith int
 
+//copies input byte-slice to reply 
 func (t *Arith) Echo(args *ByteArgs, reply *ByteArgs) error {
 	log.Printf("Initially %v, with length %d, reply is %v has length %d\n",
 		 args.A, len(args.A), reply.A, len(reply.A))
-	numWritten := copy(reply.A, args.A)
+	replyData := make([]byte, len(args.A))
+	numWritten := copy(replyData, args.A)
+	reply.A = replyData
 	log.Printf("Echo copied %d elems over", numWritten)
 	return nil
 }
 
-func asynchronousCall(c *rpc.Client) {
+//sends -window number of calls to server, then waits for all responses
+func asynchronousCall(c *rpc.Client, w *sync.WaitGroup) {
+	
+	// Signal this is complete when we leave the function
+	defer w.Done()
+
 	var args ByteArgs
-	slice := make([]byte, messageLength, messageLength)
+	slice := make([]byte, messageLength)
 	for i := range slice {
         slice[i] = byte(i)
     }
@@ -63,11 +73,13 @@ func asynchronousCall(c *rpc.Client) {
 	// Asynchronous call
 	var calls []*rpc.Call
 
-	var reply ByteArgs
-	returnslice := make([]byte, messageLength, messageLength)
-	reply.A = returnslice
-	for i := 0 ; i < numMessages; i++ {
-		call := c.Go("Arith.Echo", args, &reply, nil)
+	// space for windowSize replies
+	var reply []*ByteArgs
+
+	for i := 0 ; i < windowSize; i++ {
+		reply = append(reply, new(ByteArgs))
+		//call := c.Go("Arith.Echo", args, &reply[i], nil)
+		call := c.Go("Arith.Echo", args, reply[i], nil)
 		calls = append(calls, call)
 	}
 
@@ -75,9 +87,9 @@ func asynchronousCall(c *rpc.Client) {
         <-call.Done
     }
 
-    log.Printf("Finished calls, message: %v\n", reply);
-	//replyCall := <-divCall.Done	// will be equal to divCall
-	// check errors, print, etc.
+    for i := 0 ; i < windowSize ; i++ {
+    	log.Printf("Finished calls, message %d: %v\n", i, *reply[i]);
+    }
 }
 
 
@@ -94,16 +106,22 @@ func main() {
     nC := flag.Int("nc", 1, "number of clients")
     mL := flag.Int("ml", 100, "message length")
     nM := flag.Int("nm", 1, "number of messages")
+    wS := flag.Int("ws", 10, "window size (# of outstanding messages)")
     flag.Parse()
+
     numServers = *nS
     numClients = *nC
     numMessages = *nM
     messageLength = *mL
+    windowSize = *wS
+
+    fmt.Printf("Num servers: %d, Num clients: %d, Num Messages: %d, Message Length: %d, Window Size: %d\n",
+    	numServers, numClients, numMessages, messageLength, windowSize)
 
 	for i := 0; i < numServers; i++ {
 		startTCPServer(PORTBASE + i)				
 	}
-	fmt.Printf("Started %d servers", numServers)
+	fmt.Printf("Started %d servers\n", numServers)
 
 	var clients []*rpc.Client
 
@@ -111,13 +129,22 @@ func main() {
 		client := startTCPClient(PORTBASE + (i % numServers))
 		clients = append(clients, client)
 	}
-	log.Printf("Started %d clients", numClients)
+	fmt.Printf("Started %d clients\n", numClients)
 
+	w := new(sync.WaitGroup)
+	startTime := time.Now()
 	for i := 0; i < numClients; i++ {
-		go asynchronousCall(clients[i])
+		w.Add(1)
+		go asynchronousCall(clients[i], w)
 	}
-	time.Sleep(1 * 1e9)
-	//<-make(chan int)
+
+	w.Wait()
+	totalTime := time.Since(startTime)
+	totalMbits := float64(messageLength * 8 * windowSize * numClients) / 1e6
+	fmt.Printf("Total time: %v\n", totalTime)
+	fmt.Printf("Total Mbits sent: %v\n", totalMbits)
+	var throughputMb = totalMbits/totalTime.Seconds()
+    fmt.Printf("Throughput (Mbits/s): %v\n", throughputMb)
 }
 
 func startTCPClient(port int) (*rpc.Client) {
@@ -149,7 +176,7 @@ func startTCPServer(port int) (*rpc.Server) {
 
 func checkError(err error) {
 	if err != nil {
-		log.Println("Fatal error ", err.Error())
+		fmt.Println("Fatal error ", err.Error())
 		os.Exit(1)
 	}
 }

@@ -1,0 +1,15 @@
+Multi-server, Multi-client, variable-length message + window size benchmark?
+===
+
+Basic usage:
+ * go install gorpc-tests/variableMessage
+ * variableMessage  [-ns number of servers]
+ 					[-nc number of clients]
+ 					[-ml message length]
+ 					[-nm number of messages each client should send]
+ 					[-ws window size]
+
+ This will set up ns servers, each connected to ~nc/ns unique clients.
+ Each client will then send ws number of messages, each of length ml to
+ its connected server, and then wait for responses to all of them (the response
+ is the message echoed back). The output will be the throughput in megabits/s
