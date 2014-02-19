@@ -1,3 +1,10 @@
+/*
+*
+*
+*
+*/
+
+
 package main
 
 import (
@@ -123,15 +130,23 @@ func throughputTest(serverAddr string, numClients int, numServers int, numWindow
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Println("Usage: ", os.Args[0], "[server]")
+    if len(os.Args) != 5 {
+        fmt.Println("Usage: ", os.Args[0], "[numClients] [numServers] [numWindows] [msgSize(bytes)]")
         os.Exit(1)
     }
 
-    serverAddr := os.Args[1]
+    numClients,err := strconv.Atoi(os.Args[1])
+    checkError(err)
 
-    //args - serverAddr, numClients, numServers, numWindows, msgSize in bytes
-    throughputTest(serverAddr, 300, 1, 50, 10000)
+    numServers,err := strconv.Atoi(os.Args[2])
+    checkError(err)
+
+    numWindows,err := strconv.Atoi(os.Args[3])
+    checkError(err)
+    
+    numBytes,err := strconv.Atoi(os.Args[4])
+    checkError(err)
+
+    //args - localAddr, numClients, numServers, numWindows, msgSize in bytes
+    throughputTest("127.0.0.1", numClients, numServers, numWindows, numBytes)
 }
-
-
