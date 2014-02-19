@@ -113,11 +113,11 @@ func throughputTest(serverAddr string, numClients int, numServers int, numWindow
         }
     }       
 
-	duration := time.Since(startTime)
+    duration := time.Since(startTime)
 
     var throughputMb = float64(messageSize*8*numWindows*numClients)/duration.Seconds()/1000000
 
-	fmt.Printf("Total time: %v s\n", duration.Seconds())
+    fmt.Printf("Total time: %v s\n", duration.Seconds())
     fmt.Printf("Throughput (Mbits/s): %v\n", throughputMb)
 
 }
@@ -126,7 +126,7 @@ func main() {
     if len(os.Args) != 2 {
         fmt.Println("Usage: ", os.Args[0], "[server]")
         os.Exit(1)
-	}
+    }
 
     serverAddr := os.Args[1]
 
