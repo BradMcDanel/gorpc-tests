@@ -1,0 +1,13 @@
+Google Snappy Benchmark
+===
+For large transfers where the data is compressible and the network is commidity / under stress,
+Google Snappy may well lead to substantial performance wins.
+
+go get code.google.com/p/snappy-go/snappy
+go build dfs.go
+./dfs --server=True
+time ./dfs --calls=100
+time ./dfs --snappy --calls=100
+
+If you are running the server on a different computer:
+time ./dfs --host=resonance.seas.harvard.edu --snappy --calls=100

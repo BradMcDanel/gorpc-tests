@@ -1,0 +1,39 @@
+Server: resonance.seas.harvard.edu
+Client: wireless laptop
+
+File: moby.txt [compresses well]
+===
+smerity@pegasus:~/Coding/Harvard/cs260r/gorpc-tests/snappy$ time ./dfs --calls=100
+
+Transferred: 53.1MB
+
+real   0m11.754s
+user   0m0.992s
+sys    0m0.632s
+---
+smerity@pegasus:~/Coding/Harvard/cs260r/gorpc-tests/snappy$ time ./dfs --snappy --calls=100
+
+Transferred: 35.5MB
+
+real   0m7.173s
+user   0m0.324s
+sys    0m0.248s
+
+
+File: Neon.mp3 [does not compress well]
+===
+smerity@pegasus:~/Coding/Harvard/cs260r/gorpc-tests/snappy$ time ./dfs --calls=100
+
+Transferred: 52.8MB
+
+real   0m13.875s
+user   0m0.656s
+sys    0m0.241s
+---
+smerity@pegasus:~/Coding/Harvard/cs260r/gorpc-tests/snappy$ time ./dfs --snappy --calls=100
+
+Transferred: 51.8MB
+
+real   0m11.691s
+user   0m0.691s
+sys    0m0.296s
