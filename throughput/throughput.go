@@ -107,9 +107,9 @@ func throughputTest(serverAddr string, numClients int, numServers int, numWindow
 
 
     //send messages
-    for i := 0; i < numClients; i++ {
-        for j := 0; j < numWindows; j++ {
-            basicCall(clients[i], messageSize)            
+    for i := 0; i < numWindows; i++ {
+        for j := 0; j < numClients; j++ {
+            basicCall(clients[j], messageSize)            
         }
     }       
 
@@ -131,7 +131,7 @@ func main() {
     serverAddr := os.Args[1]
 
     //args - serverAddr, numClients, numServers, numWindows, msgSize in bytes
-    throughputTest(serverAddr, 200, 30, 5, 100)
+    throughputTest(serverAddr, 300, 1, 50, 10000)
 }
 
 
