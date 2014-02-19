@@ -1,0 +1,17 @@
+Multi-server, Multi-client, variable-length message + window size benchmark?
+===
+
+Basic usage: (from inside the windowedThroughput folder, this assumes that 
+				export GOPATH=$HOME/go
+				export PATH=$PATH:$GOPATH/bin
+				have been set)
+ * go install windowedThroughput
+ * windowedThroughput   [-ns number of servers]
+ 						[-nc number of clients]
+ 						[-ml message length]
+ 						[-nm number of messages each client should send]
+ 						[-ws window size]
+
+ This will set up ns servers, each connected to approx nc/ns unique clients.
+ Each client will then send a total of nm messages, each of length ml to
+ its connected server, with a window size of ws. The output will be the throughput in megabytes/s

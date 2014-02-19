@@ -1,5 +1,5 @@
 /* Provides three basic tests:  
- * 1) Simple throughput: 1 client sending 1 byte, 1 server echoing that byte
+ * 1) Serial null throughput: 1 client sending 1 byte, 1 server echoing that byte
  * 2) Maximum number of connections: Keep making clients until server can't handle any more
  * 3) Connect+Close Clients: 1 server, connect client, close client, repeat
  *
@@ -7,6 +7,7 @@
  * go install gorpc-tests/basicTests
    basicTests [-port] [-test] [-http] [-nCalls] 
  */
+   
 package main
 
 import (
@@ -83,7 +84,8 @@ func synchronousCall(c *rpc.Client) {
 }
 
 //sends 1 byte to server and expects the same byte in return
-func basicCall(c *rpc.Client) {
+func basicCall(c *rpc.Client, w *sync.WaitGroup) {
+	defer w.Done()
 	args := BasicArg{1};
 	var reply BasicArg
 	err := c.Call("Arith.Echo", args, &reply)
@@ -134,11 +136,13 @@ func basicCallTest(port int) {
 		startTCPServer(port)
 		client1 = startTCPClient(port)
 	}
-
+	
 	startTime := time.Now()
 	for i := 0; i < numCalls ; i++ {
-		basicCall(client1)
+		w.Add()
+		go basicCall(client1, w)
 	}
+	w.Wait()
 	duration := time.Since(startTime)
 	fmt.Printf("Average duration of Basic Call: %v us\n", duration.Seconds()*1000000/float64(numCalls))
 }
