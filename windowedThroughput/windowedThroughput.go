@@ -56,6 +56,8 @@ func (t *Arith) Echo(args *ByteArgs, reply *ByteArgs) error {
 	numWritten := copy(replyData, args.A)
 	reply.A = replyData
 	log.Printf("Echo copied %d elems over", numWritten)
+	second := time.Second
+	time.Sleep(second)
 	return nil
 }
 
@@ -73,17 +75,6 @@ func (t *Arith) FindLen(args *ByteArgs, reply *LenArgs) error {
 	return nil
 }
 
-func worker(c *rpc.Client, args *ByteArgs, reply []*ByteArgs, linkChan chan int, clientGroup *sync.WaitGroup) {
-	
-	// Signal to client that the worker is complete when we leave the function
-	defer clientGroup.Done()
-	
-	for v := range linkChan {
-		c.Call("Arith.Echo", args, reply[v])
-		//fmt.Println("Finished", v)
-	}
-}
-
 //sends specified number of messages to server, with a designated window size
 func clientWindowedCall(c *rpc.Client, w *sync.WaitGroup) {
 	
@@ -98,31 +89,28 @@ func clientWindowedCall(c *rpc.Client, w *sync.WaitGroup) {
     }
 	args.A = slice
 
-	// space for windowSize replies
-	var reply []*ByteArgs
-	for i := 0 ; i < windowSize ; i++ {
-		reply = append(reply, new(ByteArgs))
-	}
+	var reply ByteArgs
 
-	clientGroup := new(sync.WaitGroup)
+	// The channel keeps track of the asynchronous calls
+	lCh := make(chan *rpc.Call, windowSize)
 	
-	// The channel distributes work to the workers
-	lCh := make(chan int)
-
+	// make initial windowSize calls
 	for i := 0 ; i < windowSize ; i++ {
-			clientGroup.Add(1)
-		go worker(c, &args, reply, lCh, clientGroup)
+		c.Go("Arith.Echo", &args, &reply, lCh)
 	}
 
-	// Send in the work requests (number of messages) to the workers
-	for i := 0; i < numMessages; i++ {
-		lCh <- (i % windowSize)
+	//every time there's a response on the channel, take it off and make a new async call
+	receivedMessages := 0
+	for receivedMessages < numMessages {
+		select {
+		case <-lCh:
+			receivedMessages+=1
+			log.Printf("Received response for message %d", receivedMessages)
+			c.Go("Arith.Echo", &args, &reply, lCh)
+		}
 	}
 
 	close(lCh)
-
-	//waits until all workers complete
-	clientGroup.Wait()
 }
 
 func main() {
